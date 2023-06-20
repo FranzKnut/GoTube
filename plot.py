@@ -13,6 +13,8 @@ import argparse
 import pickle
 import os
 
+from jax import config
+config.update("jax_enable_x64", True)
 
 def draw_ellipse(ellipse, color, alph, axis_3d):
     c = ellipse[1:3]
