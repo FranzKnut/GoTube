@@ -1,22 +1,21 @@
 """Entry point for running GoTube."""
+import configparser
 import os
 import numpy as np
 import jax.numpy as jnp
-
-import benchmarks as bm
-import stochastic_reachtube as reach
-import go_tube
-import configparser
-import time
-from performance_log import log_args
-from performance_log import close_log
-from performance_log import create_plot_file
-from performance_log import write_plot_file
-from performance_log import log_stat
-
 import argparse
-
 from jax import config
+import gotube.benchmarks as bm
+import gotube.stochastic_reachtube as reach
+import gotube.go_tube as go_tube
+import time
+from gotube.performance_log import close_log
+from gotube.performance_log import create_plot_file
+from gotube.performance_log import write_plot_file
+from gotube.performance_log import log_stat
+from gotube.performance_log import log_args
+
+
 config.update("jax_enable_x64", True)
 
 
@@ -135,7 +134,7 @@ def run_gotube(system: bm.BaseSystem, args):
             log_stat(volumes)
 
     if args.score:
-        with open("../all_prob_scores.csv", "a") as f:
+        with open("all_prob_scores.csv", "a") as f:
             # CSV with header benchmark, time-horizon, prob, runtime, volume
             f.write(f"{args.benchmark},")
             f.write(f"{args.time_horizon:0.4g},")

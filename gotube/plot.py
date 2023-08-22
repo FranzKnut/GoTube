@@ -160,7 +160,7 @@ if __name__ == "__main__":
 
     plt.show()
 
-    os.makedirs("../plot_obj", exist_ok=True)
+    os.makedirs("plot_obj", exist_ok=True)
     for i in range(1000):
         filename = f"plot_obj/plot_{i:03d}.pkl"
         if not os.path.isfile(filename):
