@@ -149,6 +149,15 @@ if __name__ == "__main__":
         skip_reachsets=1,
     )
 
+    ax.view_init(elev=-10.)
+    ax.tick_params(axis='both', labelsize=8)
+    xlabel = 'x' + str(rt.axis1 + 1)
+    ylabel = 'x' + str(rt.axis2 + 1)
+    ax.set_xlabel(xlabel, fontsize=8)
+    ax.set_ylabel(ylabel, fontsize=8)
+    ax.set_zlabel('Time (s)', fontsize=8)
+    # plt.savefig('dubins_comparison.pdf')
+
     plt.show()
 
     os.makedirs("plot_obj", exist_ok=True)

@@ -88,7 +88,7 @@ if __name__ == "__main__":
     total_gradients = None
     total_initial_points = jnp.zeros((rt.num_gpus, 0, rt.model.dim))
 
-    # for loop starting at Line 2
+    # for loop starting at Line 3
     for i, time_py in enumerate(timeRange):
         print(f"Step {i}/{timeRange.shape[0]} at {time_py:0.2f} s")
 
@@ -108,7 +108,10 @@ if __name__ == "__main__":
             total_random_points,
             total_gradients,
         ) = go_tube.optimize(
-            rt, total_initial_points, total_random_points, total_gradients
+            rt,
+            total_initial_points,
+            total_random_points,
+            total_gradients
         )
 
         write_plot_file(
