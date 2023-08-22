@@ -112,7 +112,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     config = configparser.ConfigParser()
-    config.read("config.ini")
+    config.read("gotube/config.ini")
 
     files = config["files"]
 

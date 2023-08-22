@@ -144,7 +144,7 @@ class Robotarm(BaseSystem):
 
 
 # 3-dimensional dubins car
-class DubinsCar:
+class DubinsCar(BaseSystem):
     def __init__(self, radius=0.01):
         super().__init__(cx=(0, 0, 0.7854, 0), radius=radius)
 
