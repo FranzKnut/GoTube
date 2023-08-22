@@ -23,7 +23,7 @@ def close_log(notes):
     global registered_args
     global logged_stats
     final_dict = {"args": registered_args, "stats": logged_stats, "notes": notes}
-    os.makedirs("logged", exist_ok=True)
+    os.makedirs("../logged", exist_ok=True)
     for i in range(100000):
         fname = f"logged/stat_{i:04d}.json"
         if not os.path.isfile(fname):

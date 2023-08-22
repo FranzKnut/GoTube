@@ -1,5 +1,4 @@
 """Entry point for running GoTube."""
-import configparser
 import os
 import numpy as np
 import jax.numpy as jnp
@@ -136,7 +135,7 @@ def run_gotube(system: bm.BaseSystem, args):
             log_stat(volumes)
 
     if args.score:
-        with open("all_prob_scores.csv", "a") as f:
+        with open("../all_prob_scores.csv", "a") as f:
             # CSV with header benchmark, time-horizon, prob, runtime, volume
             f.write(f"{args.benchmark},")
             f.write(f"{args.time_horizon:0.4g},")
