@@ -1,0 +1,16 @@
+[tool.poetry]
+name = "gotube"
+version = "0.1.0"
+description = ""
+authors = ["Your Name <you@example.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.8"
+jax = "^0.4.11"
+jaxlib = "^0.4.11"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

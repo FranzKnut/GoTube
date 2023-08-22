@@ -6,8 +6,27 @@ from jax.numpy import tanh
 from jax.numpy import sin
 from jax.numpy import cos
 from jax.numpy import exp
-
 import pickle
+
+
+class BaseSystem:
+    """Base class for models to be checked with GoTube."""
+    dim: int
+
+    def __init__(self, cx=(1, 1), radius=None):
+        # ============ adapt initial values ===========
+        self.cx = cx
+        if radius is not None:
+            self.rad = radius
+        else:
+            self.rad = 0.01
+        # ===================================================
+        self.cx = np.array(self.cx, dtype=float)
+        self.dim = self.cx.size  # dimension of the system
+
+    def f_dyn(self, t=0, x=None):
+        raise NotImplementedError
+
 
 def get_model(benchmark, radius=None):
     if benchmark == "bruss":
@@ -43,17 +62,9 @@ def get_model(benchmark, radius=None):
 
 
 # 2-dimensional brusselator
-class Brusselator:
-    def __init__(self, radius=None):
-        # ============ adapt initial values ===========
-        self.cx = (1, 1)
-        if radius is not None:
-            self.rad = radius
-        else:
-            self.rad = 0.01
-        # ===================================================
-        self.cx = np.array(self.cx, dtype=float)
-        self.dim = self.cx.size  # dimension of the system
+class Brusselator(BaseSystem):
+    def __init__(self, radius=0.01):
+        super().__init__(cx=(1, 1), radius=radius)
 
     def fdyn(self, t=0, x=None):
         if x is None:
@@ -75,17 +86,9 @@ class Brusselator:
 
 
 # 2-dimensional van der pol
-class VanDerPol:
-    def __init__(self, radius):
-        # ============ adapt initial values ===========
-        self.cx = (-1, -1)
-        if radius is not None:
-            self.rad = radius
-        else:
-            self.rad = 0.1
-        # ===================================================
-        self.cx = np.array(self.cx, dtype=float)
-        self.dim = self.cx.size  # dimension of the system
+class VanDerPol(BaseSystem):
+    def __init__(self, radius=0.1):
+        super().__init__(cx=(-1, -1), radius=radius)
 
     def fdyn(self, t=0, x=None):
         if x is None:
@@ -104,17 +107,9 @@ class VanDerPol:
 
 
 # 4-dimensional Robotarm
-class Robotarm:
-    def __init__(self, radius):
-        # ============ adapt initial values ===========
-        self.cx = (1.505, 1.505, 0.005, 0.005)
-        if radius is not None:
-            self.rad = radius
-        else:
-            self.rad = 0.05
-        # ===================================================
-        self.cx = np.array(self.cx, dtype=float)
-        self.dim = self.cx.size  # dimension of the system
+class Robotarm(BaseSystem):
+    def __init__(self, radius=0.05):
+        super().__init__(cx=(1.505, 1.505, 0.005, 0.005), radius=radius)
 
     def fdyn(self, t=0, x=None):
         if x is None:
@@ -124,7 +119,7 @@ class Robotarm:
         x1, x2, x3, x4 = x
 
         m = 1
-        l = 3
+        l = 3  # noqa
         kp1 = 2
         kp2 = 1
         kd1 = 2
@@ -150,16 +145,8 @@ class Robotarm:
 
 # 3-dimensional dubins car
 class DubinsCar:
-    def __init__(self, radius):
-        # ============ adapt initial values ===========
-        self.cx = (0, 0, 0.7854, 0)
-        if radius is not None:
-            self.rad = radius
-        else:
-            self.rad = 0.01
-        # ===================================================
-        self.cx = np.array(self.cx, dtype=float)
-        self.dim = self.cx.size  # dimension of the system
+    def __init__(self, radius=0.01):
+        super().__init__(cx=(0, 0, 0.7854, 0), radius=radius)
 
     def fdyn(self, t=0, x=None):
         if x is None:
@@ -187,17 +174,9 @@ class DubinsCar:
 
 
 # 2-dimensional Mitchell  Schaeffer  cardiac-cell
-class MitchellSchaeffer:
-    def __init__(self, radius):
-        # ============ adapt initial values ===========
-        self.cx = (0.8, 0.5)
-        if radius is not None:
-            self.rad = radius
-        else:
-            self.rad = 0.1
-        # ===================================================
-        self.cx = np.array(self.cx, dtype=float)
-        self.dim = self.cx.size  # dimension of the system
+class MitchellSchaeffer(BaseSystem):
+    def __init__(self, radius=0.1):
+        super().__init__(cx=(0.8, 0.5), radius=radius)
 
     def fdyn(self, t=0, x=None):
         if x is None:
@@ -221,18 +200,9 @@ class MitchellSchaeffer:
 
 
 # 4-dimensional cartpole with linear stabilizing controller
-class CartpoleLinear:
-    def __init__(self, radius):
-        # ============ adapt initial values ===========
-        self.cx = (0, 0, 0.001, 0)  # initial values
-        if radius is not None:
-            self.rad = radius
-        else:
-            self.rad = 0.05
-        # ===================================================
-
-        self.cx = np.array(self.cx, dtype=float)
-        self.dim = self.cx.size  # dimension of the system
+class CartpoleLinear(BaseSystem):
+    def __init__(self, radius=0.05):
+        super().__init__(cx=(0, 0, 0.001, 0), radius=radius)
 
     def fdyn(self, t=0, x=None):
         if x is None:
@@ -243,7 +213,7 @@ class CartpoleLinear:
 
         M = 1.0
         g = 9.81
-        l = 1.0
+        l = 1.0  # noqa
         m = 0.001
 
         f = -1.1 * M * g * th - dth
@@ -279,10 +249,9 @@ class CartpoleLinear:
 
 
 # 17-dimensional Quadcopter
-class Quadcopter:
-    def __init__(self, radius):
-        # ============ adapt initial values ===========
-        self.cx = (
+class Quadcopter(BaseSystem):
+    def __init__(self, radius=0.005):
+        super().__init__(cx=(
             -0.995,
             -0.995,
             9.005,
@@ -300,14 +269,7 @@ class Quadcopter:
             0,
             0,
             0,
-        )
-        if radius is not None:
-            self.rad = radius
-        else:
-            self.rad = 0.005
-        # ===================================================
-        self.cx = np.array(self.cx, dtype=float)
-        self.dim = self.cx.size  # dimension of the system
+        ), radius=radius)
 
     def fdyn(self, t=0, x=None):
         if x is None:
@@ -387,18 +349,9 @@ class Quadcopter:
 
 # CTRNN DampedForced Pendulum example
 # from https://easychair.org/publications/open/K6SZ
-class CTRNN_DampedForcedPendulum:
-    def __init__(self, radius):
-        # ============ adapt initial values ===========
-        self.cx = (0.21535, -0.58587, 0.8, 0.52323, 0.5)  # initial values
-        if radius is not None:
-            self.rad = radius
-        else:
-            self.rad = 1e-08  # initial radius
-        # ===================================================
-
-        self.cx = np.array(self.cx, dtype=float)
-        self.dim = self.cx.size  # dimension of the system
+class CTRNN_DampedForcedPendulum(BaseSystem):
+    def __init__(self, radius=1e-8):
+        super().__init__(cx=(0.21535, -0.58587, 0.8, 0.52323, 0.5), radius=radius)
 
     def fdyn(self, t=0, x=None):
         if x is None:
@@ -465,17 +418,9 @@ class CTRNN_DampedForcedPendulum:
 
 
 # 12-dimensional cartpole with CT-RNN neural network controller
-class CartpoleCTRNN:
-    def __init__(self, radius):
-        # ============ adapt initial values ===========
-        self.cx = (0, 0, 0.001, 0, 0, 0, 0, 0, 0, 0, 0, 0)
-        if radius is not None:
-            self.rad = radius
-        else:
-            self.rad = 1e-4
-        # ===================================================
-        self.cx = np.array(self.cx, dtype=float)
-        self.dim = self.cx.size  # dimension of the system
+class CartpoleCTRNN(BaseSystem):
+    def __init__(self, radius=1e-4):
+        super().__init__(cx=(0, 0, 0.001, 0, 0, 0, 0, 0, 0, 0, 0, 0), radius=radius)
 
     def fdyn(self, t=0, x=None):
         if x is None:
@@ -661,17 +606,9 @@ class CartpoleCTRNN:
 
 
 # 12-dimensional cartpole with LTC neural network controller
-class CartpoleLTC:
-    def __init__(self, radius):
-        # ============ adapt initial values ===========
-        self.cx = (0, 0, 0.001, 0, 0, 0, 0, 0, 0, 0, 0, 0)
-        if radius is not None:
-            self.rad = radius
-        else:
-            self.rad = 1e-4
-        # ===================================================
-        self.cx = np.array(self.cx, dtype=float)
-        self.dim = self.cx.size  # dimension of the system
+class CartpoleLTC(BaseSystem):
+    def __init__(self, radius=1e-4):
+        super().__init__(cx=(0, 0, 0.001, 0, 0, 0, 0, 0, 0, 0, 0, 0), radius=radius)
 
     def true_sigmoid(self, x):
         return 0.5 * (tanh(x * 0.5) + 1)
@@ -887,17 +824,9 @@ class CartpoleLTC:
 
 
 # 12-dimensional cartpole with LTC neural network controller (trained with RK integrator)
-class CartpoleLTC_RK:
-    def __init__(self, radius):
-        # ============ adapt initial values ===========
-        self.cx = (0, 0, 0.001, 0, 0, 0, 0, 0, 0, 0, 0, 0)
-        if radius is not None:
-            self.rad = radius
-        else:
-            self.rad = 1e-4
-        # ===================================================
-        self.cx = np.array(self.cx, dtype=float)
-        self.dim = self.cx.size  # dimension of the system
+class CartpoleLTC_RK(BaseSystem):
+    def __init__(self, radius=1e-4):
+        super().__init__(cx=(0, 0, 0.001, 0, 0, 0, 0, 0, 0, 0, 0, 0), radius=radius)
 
     def true_sigmoid(self, x):
         return 0.5 * (tanh(x * 0.5) + 1)
@@ -1400,17 +1329,9 @@ class CartpoleLTC_RK:
         return np.array(system_dynamics)  # return as numpy array
 
 
-class TestNODE:
-    def __init__(self, radius):
-        # ============ adapt initial values ===========
-        self.cx = (0, 0)
-        if radius is not None:
-            self.rad = radius
-        else:
-            self.rad = 1e-4
-        # ===================================================
-        self.cx = np.array(self.cx, dtype=float)
-        self.dim = self.cx.size  # dimension of the system
+class TestNODE(BaseSystem):
+    def __init__(self, radius=1e-4):
+        super().__init__(cx=(0, 0), radius=radius)
 
     def fdyn(self, t=0, x=None):
         if x is None:
@@ -1426,15 +1347,8 @@ class TestNODE:
 
 
 class LDSwithCTRNN:
-    def __init__(self, radius):
-        # ============ adapt initial values ===========
-        if radius is not None:
-            self.rad = radius
-        else:
-            self.rad = 0.5
-        # ===================================================
-        self.cx = np.zeros(10)
-        self.dim = self.cx.size  # dimension of the system
+    def __init__(self, radius=0.5):
+        super().__init__(cx=np.zeros(10), radius=radius)
         arr = np.load("rl/lds_ctrnn.npz")
         self.params = {k: arr[k] for k in arr.files}
 
@@ -1457,16 +1371,9 @@ class LDSwithCTRNN:
         return dfdt
 
 
-class PendulumwithCTRNN:
-    def __init__(self, radius):
-        # ============ adapt initial values ===========
-        if radius is not None:
-            self.rad = radius
-        else:
-            self.rad = 0.5
-        # ===================================================
-        self.cx = np.zeros(10)
-        self.dim = self.cx.size  # dimension of the system
+class PendulumwithCTRNN(BaseSystem):
+    def __init__(self, radius=0.5):
+        super().__init__(cx=np.zeros(10), radius=radius)
         arr = np.load("rl/pendulum_ctrnn.npz")
         self.params = {k: arr[k] for k in arr.files}
 
@@ -1483,7 +1390,7 @@ class PendulumwithCTRNN:
         max_speed = 8
         g = 9.81
         m = 1.0
-        l = 1.0
+        l = 1.0  # noqa
 
         newthdot = -3 * g / (2 * l) * np.sin(th + np.pi) + 3.0 / (m * l ** 2) * action
         newthdot = max_speed * np.tanh(newthdot / max_speed)
@@ -1495,16 +1402,9 @@ class PendulumwithCTRNN:
         return dfdt
 
 
-class CTRNNosc:
-    def __init__(self, radius):
-        # ============ adapt initial values ===========
-        if radius is not None:
-            self.rad = radius
-        else:
-            self.rad = 0.1
-        # ===================================================
-        self.cx = np.zeros(16)
-        self.dim = self.cx.size  # dimension of the system
+class CTRNNosc(BaseSystem):
+    def __init__(self, radius=0.1):
+        super().__init__(cx=np.zeros(16), radius=radius)
         arr = np.load("rl/ctrnn_osc.npz")
         self.params = {k: arr[k] for k in arr.files}
 
@@ -1517,17 +1417,9 @@ class CTRNNosc:
         return dhdt
 
 
-class CartPoleMLP:
-    def __init__(self, radius):
-        # ============ adapt initial values ===========
-        if radius is not None:
-            self.rad = radius
-        else:
-            self.rad = 0.1
-        self.cx = np.zeros(4)
-        self.dim = self.cx.size  # dimension of the system
-        # ===================================================
-
+class CartPoleMLP(BaseSystem):
+    def __init__(self, radius=0.1):
+        super().__init__(cx=np.zeros(4), radius=radius)
         self.params = pickle.load(open(os.path.dirname(__file__) + "/rl/cartpole_mlp.pkl", "rb"))
         # self.policy.config['explore'] = False  # make deterministic
 
@@ -1539,9 +1431,6 @@ class CartPoleMLP:
         self.length = 0.5  # actually half the pole's length
         self.polemass_length = (self.masspole * self.length)
         self.force_mag = 10.0
-        self.tau = 0.02  # seconds between state updates
-        self.elapsed_time = 0.0
-        self.kinematics_integrator = 'euler'
 
     def fdyn(self, t=0, state=None):
         if state is None:

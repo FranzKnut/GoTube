@@ -6,7 +6,7 @@ from jax import jacfwd, jacrev, jit
 
 from scipy.linalg import eigh
 from numpy.linalg import inv
-import benchmarks as bm
+import gotube.benchmarks as bm
 
 
 class FunctionDynamics:
@@ -50,6 +50,7 @@ def polar2cart_no_rad(phi):
     return (
         cart  # rad*polar2cart_no_rad(phi) is the true value of the cartesian coordinate
     )
+
 
 _jac_polar_cached = None
 

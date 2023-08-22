@@ -6,8 +6,8 @@ import matplotlib.pyplot as plt
 from numpy.linalg import svd
 from numpy.linalg import inv
 
-import stochastic_reachtube as reach
-import benchmarks as bm
+import gotube.stochastic_reachtube as reach
+import gotube.benchmarks as bm
 import configparser
 import argparse
 import pickle
@@ -75,11 +75,11 @@ def plot_ellipse(
         # ellipse_plot
 
         if dim > 2:
-            center = ellipse[1 : dim + 1]
+            center = ellipse[1: dim + 1]
             ellipse2[1] = center[axis1]
             ellipse2[2] = center[axis2]
             radius_ellipse = ellipse[dim + 1]
-            m1 = np.reshape(ellipse[dim + 2 :], (dim, dim))
+            m1 = np.reshape(ellipse[dim + 2:], (dim, dim))
             m1 = m1 / radius_ellipse ** 2
             m1 = P.transpose() @ m1 @ P  # permutation to project on chosen axes
             ellipse2[3] = 1  # because radius is already in m1
@@ -117,7 +117,7 @@ if __name__ == "__main__":
     files = config["files"]
 
     rt = reach.StochasticReachtube(
-        model=bm.get_model(args.benchmark, args.radius),
+        system=bm.get_model(args.benchmark, args.radius),
         time_horizon=args.time_horizon,
         time_step=args.time_step,
         samples=args.samples,

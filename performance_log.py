@@ -14,7 +14,7 @@ def log_args(args):
 def log_stat(stat):
     global logged_stats
     for k, v in stat.items():
-        if not k in logged_stats.keys():
+        if k not in logged_stats.keys():
             logged_stats[k] = []
         logged_stats[k].append(v)
 
@@ -34,13 +34,14 @@ def close_log(notes):
 
 def create_plot_file(files):
     for i in range(100000):
-        fname = files['output_directory']+f"{i:04d}"+files['output_file']
+        fname = files['output_directory'] + f"{i:04d}" + files['output_file']
         if not os.path.isfile(fname):
             break
     return fname
 
 
 def write_plot_file(fname, mode, t, cx, rad, M1):
+    os.makedirs(os.path.dirname(fname), exist_ok=True)
     f = open(fname, mode)
     f.write(str(t) + " ")
     f.write(' '.join(map(str, cx.reshape(-1))) + " ")
@@ -53,4 +54,3 @@ if __name__ == "__main__":
     print("registered_args: ", str(registered_args))
     log_args({"hello": "test"})
     print("registered_args: ", str(registered_args))
-

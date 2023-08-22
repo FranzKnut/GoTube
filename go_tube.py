@@ -2,12 +2,12 @@
 
 import jax.numpy as jnp
 from jax import vmap, pmap
-import polar_coordinates as pol
+import gotube.polar_coordinates as pol
 from jax.numpy.linalg import svd
 import jax.scipy.special as sc
 import time
-from performance_log import log_stat
-from timer import Timer
+from gotube.performance_log import log_stat
+from gotube.timer import Timer
 from scipy.stats import genextreme, kstest
 import gc
 

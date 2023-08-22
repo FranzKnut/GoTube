@@ -1,51 +1,65 @@
 # optimization problem
-
+from functools import partial
 import numpy as np
 import jax.numpy as jnp
 from jax.experimental.ode import odeint
-from jax import vmap, jit, pmap, device_put, devices
-from functools import partial
+from jax import device_put, devices, pmap, vmap, jit
 
 from scipy.special import gamma
 
 # own files
-import benchmarks as bm
-import polar_coordinates as pol
-import dynamics
+import gotube.benchmarks as bm
+import gotube.polar_coordinates as pol
+import gotube.dynamics as dynamics
 
 
 def create_aug_state_cartesian(x, F):
-    aug_state = jnp.concatenate((jnp.array([x]), F)).reshape(
-        -1
-    )  # reshape to row vector
-
-    return aug_state
+    return jnp.concatenate((jnp.array([x]), F)).reshape(-1)  # reshape to row vector
 
 
 class StochasticReachtube:
     def __init__(
         self,
-        model=bm.CartpoleCTRNN(None),
-        time_horizon=10.0,  # time_horizon until which the reachtube should be constructed
-        profile=False,
-        time_step=0.1,  # ReachTube construction
-        h_metric=0.05,  # time_step for metric computation
-        h_traces=0.01,  # time_step for traces computation
-        max_step_metric=0.00125,  # maximum time_step for metric computation
-        max_step_optim=0.1,  # maximum time_step for optimization
-        samples=100,  # just for plotting: number of random points on the border of the initial ball
-        batch=1,  # number of initial points for vectorization
-        num_gpus=1,  # number of GPUs for parallel computation
+        system: bm.BaseSystem = bm.CartpoleCTRNN(None),
+        time_horizon: float = 10.0,  # time_horizon until which the reachtube should be constructed
+        profile: bool = False,
+        time_step: float = 0.1,  # ReachTube construction
+        h_metric: float = 0.05,  # time_step for metric computation
+        h_traces: float = 0.01,  # time_step for traces computation
+        max_step_metric: float = 0.00125,  # maximum time_step for metric computation
+        max_step_optim: float = 0.1,  # maximum time_step for optimization
+        samples: int = 100,  # just for plotting: number of random points on the border of the initial ball
+        batch: int = 1,  # number of initial points for vectorization
+        num_gpus: int = 1,  # number of GPUs for parallel computation
         fixed_seed=False,  # specify whether a fixed seed should be used (only for comparing different algorithms)
-        axis1=0,  # axis to project reachtube to
-        axis2=1,
-        atol=1e-10,  # absolute tolerance of integration
-        rtol=1e-10,  # relative tolerance of integration
-        plot_grid=50,
-        mu=1.5,
-        gamma=0.01,
-        radius=False,
+        axis1: int = 0,  # axis to project reachtube to
+        axis2: int = 1,
+        atol: float = 1e-10,  # absolute tolerance of integration
+        rtol: float = 1e-10,  # relative tolerance of integration
+        plot_grid: int = 50,
+        mu: float = 1.5,
+        gamma: float = 0.01,
+        radius: bool = False,
     ):
+        """Construct a stochastic reachtube for a given model
+
+        Parameters
+        ----------
+        model : bm.BaseModel, optional
+            _description_, by default bm.CartpoleCTRNN(None)
+        time_horizon : float, optional
+            _description_, by default 10.0
+        time_step : float, optional
+            _description_, by default 0.1
+        atol : float, optional
+            _description_, by default 1e-10
+        mu : float, optional
+            _description_, by default 1.5
+        gamma : float, optional
+            _description_, by default 0.01
+        radius : bool, optional
+            _description_, by default False
+        """
 
         self.time_step = min(time_step, time_horizon)
         self.profile = profile
@@ -66,13 +80,13 @@ class StochasticReachtube:
         self.mu = mu
         self.gamma = gamma
 
-        self.model = model
+        self.model = system
         self.init_model()
 
-        self.metric = dynamics.FunctionDynamics(model).metric
+        self.metric = dynamics.FunctionDynamics(system).metric
         self.init_metric()
 
-        self.f_jac_at = dynamics.FunctionDynamics(model).f_jac_at
+        self.f_jac_at = dynamics.FunctionDynamics(system).f_jac_at
 
     def init_metric(self):
         self.M1 = np.eye(self.model.dim)

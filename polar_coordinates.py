@@ -1,9 +1,8 @@
 # transformation between polar and cartesian coordinates
-
 import numpy as np
 import jax.numpy as jnp
 from jax import jit
-import dynamics
+import gotube.dynamics as dynamics
 
 # initialize random polar coordinates with dimension dim
 _rng = np.random.RandomState(12937)

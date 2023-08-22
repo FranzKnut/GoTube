@@ -1,3 +1,6 @@
+"""Entry point for running GoTube."""
+import configparser
+import os
 import numpy as np
 import jax.numpy as jnp
 
@@ -18,11 +21,7 @@ from jax import config
 config.update("jax_enable_x64", True)
 
 
-if __name__ == "__main__":
-
-    start_time = time.time()
-
-    parser = argparse.ArgumentParser(description="")
+def add_gotube_args(parser):
     parser.add_argument("--profile", action="store_true")
     parser.add_argument("--score", action="store_true")
     parser.add_argument("--benchmark", default="vdp")
@@ -44,17 +43,25 @@ if __name__ == "__main__":
     parser.add_argument("--ellipsoids", action="store_true")
     # initial radius
     parser.add_argument("--radius", default=None, type=float)
+    return parser
 
-    args = parser.parse_args()
-    log_args(vars(args))
 
+def run_gotube(system: bm.BaseSystem, args):
+    """Run GoTube for the given system
+
+    Parameters
+    ----------
+    system : bm.BaseSystem
+        The system to be verified
+    args : _type_
+        Command line arguments
+    """
+    start_time = time.time()
     config = configparser.ConfigParser()
-    config.read("./config.ini")
-
+    config.read(os.path.dirname(__file__) + "/config.ini")
     files = config["files"]
-
     rt = reach.StochasticReachtube(
-        model=bm.get_model(args.benchmark, args.radius),
+        system=system,
         profile=args.profile,
         mu=args.mu,  # mu as maximum over-approximation
         gamma=args.gamma,  # error-probability
@@ -146,3 +153,11 @@ if __name__ == "__main__":
             "samples": args.num_gpus * total_random_points.shape[1],
         }
         close_log(final_notes)
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser = add_gotube_args(parser)
+    args = parser.parse_args()
+    log_args(vars(args))
+    run_gotube(bm.get_model(args.benchmark, args.radius), args)
