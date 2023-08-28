@@ -25,10 +25,8 @@ class StochasticReachtube:
         profile: bool = False,
         time_step: float = 0.1,  # ReachTube construction
         h_metric: float = 0.05,  # time_step for metric computation
-        h_traces: float = 0.01,  # time_step for traces computation
         max_step_metric: float = 0.00125,  # maximum time_step for metric computation
         max_step_optim: float = 0.1,  # maximum time_step for optimization
-        samples: int = 100,  # just for plotting: number of random points on the border of the initial ball
         batch: int = 1,  # number of initial points for vectorization
         num_gpus: int = 1,  # number of GPUs for parallel computation
         fixed_seed=False,  # specify whether a fixed seed should be used (only for comparing different algorithms)
@@ -62,11 +60,9 @@ class StochasticReachtube:
         self.time_step = min(time_step, time_horizon)
         self.profile = profile
         self.h_metric = min(h_metric, time_step)
-        self.h_traces = h_traces
         self.max_step_metric = min(max_step_metric, self.h_metric)
         self.max_step_optim = min(max_step_optim, self.time_step)
         self.time_horizon = time_horizon
-        self.sample_count = samples
         self.batch = batch
         self.num_gpus = num_gpus
         self.fixed_seed = fixed_seed
