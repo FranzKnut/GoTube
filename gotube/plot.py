@@ -1,20 +1,26 @@
 # plotting the outputs from GoTube (ellipse, circle, intersections etc.)
-
+import jax
 import numpy as np
+import jax.numpy as jnp
 import matplotlib.pyplot as plt
 
 from numpy.linalg import svd
 from numpy.linalg import inv
+from jax.experimental.ode import odeint
+
 
 import gotube.stochastic_reachtube as reach
 import gotube.benchmarks as bm
+import gotube.polar_coordinates as pol
 import configparser
 import argparse
 import pickle
 import os
 
-from jax import config
+from jax import config, vmap
+
 config.update("jax_enable_x64", True)
+
 
 def draw_ellipse(ellipse, color, alph, axis_3d):
     c = ellipse[1:3]
@@ -47,15 +53,13 @@ def draw_ellipse(ellipse, color, alph, axis_3d):
     axis_3d.plot(xs=X[0], ys=X[1], zs=ellipse[0], color=color, alpha=alph)
 
 
-def plot_ellipse(
-    time_horizon, dim, axis1, axis2, file, color, alph, axis_3d, skip_reachsets=1
+def plot_ellipses(
+        time_horizon, dim, projection_axes, data_ellipse, axis_3d, skip_reachsets=1, color='magenta', alph=0.8
 ):
-    data_ellipse = np.loadtxt(file)
-
     # permutation matrix to project on axis1 and axis2
     P = np.eye(dim)
-    P[:, [0, axis1]] = P[:, [axis1, 0]]
-    P[:, [1, axis2]] = P[:, [axis2, 1]]
+    P[:, [0, projection_axes[0]]] = P[:, [projection_axes[0], 0]]
+    P[:, [1, projection_axes[1]]] = P[:, [projection_axes[1]]]
 
     count = skip_reachsets
 
@@ -76,8 +80,8 @@ def plot_ellipse(
 
         if dim > 2:
             center = ellipse[1: dim + 1]
-            ellipse2[1] = center[axis1]
-            ellipse2[2] = center[axis2]
+            ellipse2[1] = center[projection_axes[0]]
+            ellipse2[2] = center[projection_axes[1]]
             radius_ellipse = ellipse[dim + 1]
             m1 = np.reshape(ellipse[dim + 2:], (dim, dim))
             m1 = m1 / radius_ellipse ** 2
@@ -97,8 +101,55 @@ def plot_ellipse(
             break
 
 
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="")
+def get_random_trace_samples(
+        reachtube: reach.StochasticReachtube,
+        timestep_granularity=0.01
+):
+    rd_polar = pol.init_random_phi(reachtube.model.dim, reachtube.sample_count)
+    rd_polar = jnp.reshape(rd_polar, (-1, rd_polar.shape[2]))
+    rd_x = (
+            vmap(pol.polar2cart, in_axes=(None, 0))(reachtube.model.rad, rd_polar)
+            + reachtube.model.cx
+    )
+    timesteps = jnp.arange(0, reachtube.time_horizon + 1e-9, timestep_granularity)
+
+    states_at_timesteps = odeint(
+        reachtube.fdyn_jax_no_pmap,
+        rd_x,
+        timesteps,
+        atol=reachtube.atol,
+        rtol=reachtube.rtol,
+    )
+
+    return timesteps, states_at_timesteps
+
+
+def plot_traces(
+        timesteps: jax.Array,
+        states_at_timesteps: jax.Array,
+        axis_3d: plt.axes,
+        projection_axes: tuple = (0, 1)
+):
+    for sample_index in range(reachtube.sample_count):
+        axis_3d.plot(
+            xs=states_at_timesteps[:, sample_index, projection_axes[0]],
+            ys=states_at_timesteps[:, sample_index, projection_axes[1]],
+            zs=timesteps,
+            color="k",
+            linewidth=1,
+        )
+
+
+def reshape_samples_for_pickle(timesteps, states_at_timesteps):
+    return {
+        "xs": np.array(states_at_timesteps[:, len(timesteps), projection_axes[0]]),
+        "ys": np.array(states_at_timesteps[:, len(timesteps), projection_axes[1]]),
+        "zs": np.array(timesteps),
+    }
+
+
+def parse_arguments():
+    parser = argparse.ArgumentParser()
     parser.add_argument("--time_step", default=0.01, type=float)
     parser.add_argument("--time_horizon", default=0.01, type=float)
     parser.add_argument("--benchmark", default="bruss")
@@ -106,64 +157,74 @@ if __name__ == "__main__":
     parser.add_argument("--samples", default=100, type=int)
     parser.add_argument("--axis1", default=0, type=int)
     parser.add_argument("--axis2", default=1, type=int)
-    # initial radius
     parser.add_argument("--radius", default=None, type=float)
+    return parser.parse_args()
 
-    args = parser.parse_args()
 
-    config = configparser.ConfigParser()
-    config.read("gotube/config.ini")
+def load_gotube_output_filepath():
+    parser = configparser.ConfigParser()
+    parser.read("gotube/config.ini")
+    file_config = parser["files"]
+    return file_config["output_directory"] + str(args.output_number) + file_config["output_file"]
 
-    files = config["files"]
 
-    rt = reach.StochasticReachtube(
-        system=bm.get_model(args.benchmark, args.radius),
-        time_horizon=args.time_horizon,
-        time_step=args.time_step,
-        samples=args.samples,
-        axis1=args.axis1,
-        axis2=args.axis2,
-    )  # reachtube
-
-    fig = plt.figure()
-    ax = fig.add_subplot(111, projection="3d")
-
-    p_dict = rt.plot_traces(axis_3d=ax)
-    p_dict["time_horizon"] = args.time_horizon
-    p_dict["dim"] = rt.model.dim
-    p_dict["axis1"] = rt.axis1
-    p_dict["axis2"] = rt.axis2
-    p_dict["data_ellipse"] = np.loadtxt(
-        files["output_directory"] + str(args.output_number) + files["output_file"]
-    )
-
-    plot_ellipse(
-        args.time_horizon,
-        rt.model.dim,
-        rt.axis1,
-        rt.axis2,
-        files["output_directory"] + str(args.output_number) + files["output_file"],
-        color="magenta",
-        alph=0.8,
-        axis_3d=ax,
-        skip_reachsets=1,
-    )
-
-    ax.view_init(elev=-10.)
-    ax.tick_params(axis='both', labelsize=8)
-    xlabel = 'x' + str(rt.axis1 + 1)
-    ylabel = 'x' + str(rt.axis2 + 1)
-    ax.set_xlabel(xlabel, fontsize=8)
-    ax.set_ylabel(ylabel, fontsize=8)
-    ax.set_zlabel('Time (s)', fontsize=8)
-    # plt.savefig('dubins_comparison.pdf')
-
-    plt.show()
-
+def save_pickle_dict_file():
     os.makedirs("plot_obj", exist_ok=True)
     for i in range(1000):
         filename = f"plot_obj/plot_{i:03d}.pkl"
         if not os.path.isfile(filename):
             with open(filename, "wb") as f:
-                pickle.dump(p_dict, f, protocol=pickle.DEFAULT_PROTOCOL)
+                pickle.dump(pickle_dict, f, protocol=pickle.DEFAULT_PROTOCOL)
             break
+
+
+def prepare_figure_and_axes():
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection="3d")
+    ax.view_init(elev=-10.)
+    ax.tick_params(axis='both', labelsize=8)
+    xlabel = 'x' + str(projection_axes[0] + 1)
+    ylabel = 'x' + str(projection_axes[1] + 1)
+    ax.set_xlabel(xlabel, fontsize=8)
+    ax.set_ylabel(ylabel, fontsize=8)
+    ax.set_zlabel('Time (s)', fontsize=8)
+    return fig, ax
+
+
+if __name__ == "__main__":
+    args = parse_arguments()
+    gotube_output_filepath = load_gotube_output_filepath()
+    ellipse_data = np.loadtxt(gotube_output_filepath)
+    projection_axes = (args.axis1, args.axis2)
+
+    reachtube = reach.StochasticReachtube(
+        system=bm.get_model(args.benchmark, args.radius),
+        time_horizon=args.time_horizon,
+        time_step=args.time_step,
+        samples=args.samples,
+    )
+
+    fig, ax = prepare_figure_and_axes()
+
+    timesteps, states_at_timesteps = get_random_trace_samples(reachtube)
+    plot_traces(timesteps, states_at_timesteps, ax, projection_axes)
+
+    pickle_dict = dict(
+        xs=np.array(states_at_timesteps[:, len(timesteps), projection_axes[0]]),
+        ys=np.array(states_at_timesteps[:, len(timesteps), projection_axes[1]]),
+        zs=timesteps,
+        time_horizon=args.time_horizon,
+        dim=reachtube.model.dim,
+        projection_axes=projection_axes,
+        ellipse_data=ellipse_data
+    )
+    save_pickle_dict_file()
+
+    plot_ellipses(
+        args.time_horizon,
+        reachtube.model.dim,
+        projection_axes,
+        ellipse_data,
+        axis_3d=ax,
+    )
+    plt.show()

@@ -32,8 +32,6 @@ class StochasticReachtube:
         batch: int = 1,  # number of initial points for vectorization
         num_gpus: int = 1,  # number of GPUs for parallel computation
         fixed_seed=False,  # specify whether a fixed seed should be used (only for comparing different algorithms)
-        axis1: int = 0,  # axis to project reachtube to
-        axis2: int = 1,
         atol: float = 1e-10,  # absolute tolerance of integration
         rtol: float = 1e-10,  # relative tolerance of integration
         plot_grid: int = 50,
@@ -68,12 +66,10 @@ class StochasticReachtube:
         self.max_step_metric = min(max_step_metric, self.h_metric)
         self.max_step_optim = min(max_step_optim, self.time_step)
         self.time_horizon = time_horizon
-        self.samples = samples
+        self.sample_count = samples
         self.batch = batch
         self.num_gpus = num_gpus
         self.fixed_seed = fixed_seed
-        self.axis1 = axis1
-        self.axis2 = axis2
         self.atol = atol
         self.rtol = rtol
         self.plotGrid = plot_grid
@@ -109,40 +105,6 @@ class StochasticReachtube:
             self.model.dim / 2.0
         )  # volume constant for ellipse and ball
         return volC * self.cur_rad ** self.model.dim * semiAxes_product
-
-    def plot_traces(self, axis_3d):
-        rd_polar = pol.init_random_phi(self.model.dim, self.samples)
-        # reshape to get samples as first index and remove gpu dimension
-        rd_polar = jnp.reshape(rd_polar, (-1, rd_polar.shape[2]))
-        rd_x = (
-            vmap(pol.polar2cart, in_axes=(None, 0))(self.model.rad, rd_polar)
-            + self.model.cx
-        )
-        plot_timerange = jnp.arange(0, self.time_horizon + 1e-9, self.h_traces)
-
-        sol = odeint(
-            self.fdyn_jax_no_pmap,
-            rd_x,
-            plot_timerange,
-            atol=self.atol,
-            rtol=self.rtol,
-        )
-
-        for s in range(self.samples):
-            axis_3d.plot(
-                xs=sol[:, s, self.axis1],
-                ys=sol[:, s, self.axis2],
-                zs=plot_timerange,
-                color="k",
-                linewidth=1,
-            )
-
-        p_dict = {
-            "xs": np.array(sol[:, s, self.axis1]),
-            "ys": np.array(sol[:, s, self.axis2]),
-            "zs": np.array(plot_timerange),
-        }
-        return p_dict
 
     def propagate_center_point(self, time_range):
         cx_jax = self.model.cx.reshape(1, self.model.dim)
