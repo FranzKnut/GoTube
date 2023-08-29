@@ -190,29 +190,25 @@ def prepare_figure_and_axes(projection_axes: tuple):
 
 
 def plot_gotube(
-        benchmark: str,
-        output_number: str,
-        projection_axes: tuple,
-        radius: float,
-        time_horizon: float,
-        time_step: float,
-        samples: int
+        system: bm.BaseSystem,
+        output_number: str = "0000",
+        projection_axes: tuple = (0, 1),
+        time_horizon: float = 0.01,
+        time_step: float = 0.01,
+        samples: int = 100
 ):
     """Plot a GoTube output file (located in the saved_outputs directory)
 
         Parameters
         ----------
-        benchmark : str
-            The benchmark system that was used to produce the output. (e.g. "cartpole")
+        system : bm.BaseSystem
+            The system that was used to produce the output. (e.g. an instance of bm.CartpoleCTRNN)
         output_number : str
             The number of the GoTube run that should be plotted.
             (e.g. "0001" opens saved_outputs/0001_GoTube.txt)
         projection_axes : tuple
             Which dimensions of the dynamical system should be plotted against time.
             (e.g. (4,5) to plot the 4th dimension on the x-axis and the 5th dimension on the y-axis)
-        radius : float
-            The radius parameter that was used to produce the output.
-            Determines the radius in which the random starting-states of the system are initialized.
         time_horizon : float
             The time_horizon parameter that was used to produce the output.
             Determines the length in seconds of the reachtube to be constructed.
@@ -226,7 +222,7 @@ def plot_gotube(
     ellipse_data = np.loadtxt(gotube_output_filepath)
 
     reachtube = reach.StochasticReachtube(
-        system=bm.get_model(benchmark, radius),
+        system=system,
         time_horizon=time_horizon,
         time_step=time_step
     )
@@ -256,11 +252,11 @@ def plot_gotube(
 if __name__ == "__main__":
     args = parse_arguments()
     projection_axes = (args.axis1, args.axis2)
+    system = bm.get_model(args.benchmark, args.radius)
     plot_gotube(
-        args.benchmark,
+        system,
         args.output_number,
         projection_axes,
-        args.radius,
         args.time_horizon,
         args.time_step,
         args.samples
