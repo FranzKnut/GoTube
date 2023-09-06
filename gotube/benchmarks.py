@@ -24,7 +24,7 @@ class BaseSystem:
         self.cx = np.array(self.cx, dtype=float)
         self.dim = self.cx.size  # dimension of the system
 
-    def f_dyn(self, t=0, x=None):
+    def fdyn(self, t=0, x=None):
         raise NotImplementedError
 
 
