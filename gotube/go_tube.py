@@ -8,7 +8,6 @@ import jax.scipy.special as sc
 import time
 from gotube.performance_log import log_stat
 from gotube.timer import Timer
-from scipy.stats import genextreme, kstest
 import gc
 
 
@@ -66,7 +65,7 @@ def get_probability_none_in_cap(model, radius_points):
 #  random sampled points for probability construction
 #  use also the discarded points and create balls around them
 def get_probability(model, radius_points):
-    return jnp.sqrt(1-model.gamma) * (1 - get_probability_none_in_cap(model, radius_points))
+    return jnp.sqrt(1 - model.gamma) * (1 - get_probability_none_in_cap(model, radius_points))
 
 
 def compute_delta_lipschitz(y_jax, fy_jax, axis, gamma):
@@ -83,23 +82,11 @@ def compute_delta_lipschitz(y_jax, fy_jax, axis, gamma):
     alpha = min(gamma_hat, 0.5)
     epsilon = jnp.sqrt(jnp.log(1 / alpha) / (2 * number_of_maxima))
 
-    c, loc, scale = genextreme.fit(max_quotients)
-    rv_genextreme = genextreme(c, loc, scale)
-
-    D_minus = kstest(max_quotients, rv_genextreme.cdf, alternative='less').statistic
-
-    max_quantile = 0.9999
-
-    # # with generalized extreme value distribution
-    prob_quantile = min(1 - gamma_hat, max_quantile - epsilon - D_minus)
-    delta_lipschitz = rv_genextreme.ppf([prob_quantile + epsilon + D_minus])  # transformation of Eq. (S14)
-    prob_bound_lipschitz = (1 - gamma_hat) * prob_quantile
-
     # without generalized extreme value distribution
-    # max_quotients = jnp.sort(max_quotients)
-    # prob_quantile = min(1 - gamma_hat, max_quantile - epsilon)
-    # delta_lipschitz = max_quotients[int(jnp.floor((prob_quantile + epsilon) * number_of_maxima))]  # transformation of Eq. (S14)
-    # prob_bound_lipschitz = (1 - gamma_hat) * prob_quantile
+    # taking maximum of quotients because it is only beneficial if F_L(max) > 1-gamma - related to Eq. (S14)
+    prob_quantile = 1 - epsilon
+    delta_lipschitz = max_quotients.max()
+    prob_bound_lipschitz = (1 - gamma_hat) * prob_quantile
 
     return delta_lipschitz, prob_bound_lipschitz
 
@@ -179,7 +166,8 @@ def optimize(model, initial_points, points=None, gradients=None):
 
         with Timer('compute lipschitz'):
             # compute maximum singular values of all new gradient matrices
-            lipschitz = pmap(vmap(compute_maximum_singular_value, in_axes=(None, None, 0)), in_axes=(None, None, 0))(model.A1, model.A0inv, gradients)
+            lipschitz = pmap(vmap(compute_maximum_singular_value, in_axes=(None, None, 0)), in_axes=(None, None, 0))(
+                model.A1, model.A0inv, gradients)
 
         with Timer('compute expected local lipschitz'):
             sample_size = points.shape[0]
