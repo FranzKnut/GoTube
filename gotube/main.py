@@ -72,7 +72,8 @@ def run_gotube(system: bm.BaseSystem, args):
     timeRange = np.arange(args.starting_time + args.time_step, args.time_horizon + 1e-9, args.time_step)
     timeRange_with_start = np.append(np.array([0]), timeRange)
 
-    volume = jnp.array([rt.compute_volume()])
+    if rt.profile or args.score:
+        volume = jnp.array([rt.compute_volume()])
 
     # propagate center point and compute metric
     (
@@ -123,7 +124,8 @@ def run_gotube(system: bm.BaseSystem, args):
             fname, "a", time_py, rt.cur_cx, rt.cur_rad, M1_timeRange[i + 1, :, :]
         )
 
-        volume = jnp.append(volume, rt.compute_volume(semiAxes_prod_timeRange[i + 1]))
+        if rt.profile or args.score:
+            volume = jnp.append(volume, rt.compute_volume(semiAxes_prod_timeRange[i + 1]))
 
         if rt.profile:
             # If profiling is enabled, log some statistics about the GD optimization process

@@ -9,6 +9,7 @@ readme = "README.md"
 python = "^3.8"
 jax = "^0.4.11"
 jaxlib = "^0.4.11"
+matplotlib = "^3.7.2"
 
 
 [build-system]
