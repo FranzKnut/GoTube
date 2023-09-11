@@ -53,10 +53,11 @@ def write_metadata(file_name, system, cl_args, total_number_of_points, runtime, 
     except metadata.PackageNotFoundError:
         gotube_version = 'unknown'
 
-    with open(file_name, "w") as f:
-        # write header
-        f.write("gotube_version,system,starting_time,time_horizon,time_step,starting_radius,mu,probability,")
-        f.write("runtime,total_samples,mean_volume,num_gpus,use_ellipsoids\n")
+    with open(file_name, "a") as f:
+        # write header if file empty
+        if os.stat(file_name).st_size == 0:
+            f.write("gotube_version,system,starting_time,time_horizon,time_step,starting_radius,mu,probability,")
+            f.write("runtime,total_samples,mean_volume,num_gpus,use_ellipsoids\n")
 
         # write metadata
         f.write(f"{gotube_version},")
