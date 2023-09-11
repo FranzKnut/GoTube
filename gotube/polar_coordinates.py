@@ -34,4 +34,10 @@ def polar2cart_euclidean_metric(rad, phis, A0inv):
 
 
 def polar2cart_no_rad(phi):
-    return dynamics.polar2cart_no_rad(phi)
+    sin_polar = jnp.sin(phi)
+    cart = jnp.append(jnp.cos(phi), jnp.ones(1)) * jnp.append(jnp.ones(1), sin_polar)
+    for i in range(1, jnp.size(phi)):
+        cart *= jnp.append(jnp.ones(i + 1), sin_polar[:-i])
+    return (
+        cart  # rad*polar2cart_no_rad(phi) is the true value of the cartesian coordinate
+    )

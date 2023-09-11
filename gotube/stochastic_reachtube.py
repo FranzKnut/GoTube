@@ -75,7 +75,12 @@ class StochasticReachtube:
         self.model = system
         self.init_model()
 
-        self.metric = dynamics.FunctionDynamics(system).metric
+        x = jnp.ones(self.model.dim)
+        if jnp.sum(jnp.abs(self.model.fdyn(0.0, x) - self.model.fdyn(1.0, x))) > 1e-8:
+            # https://github.com/google/jax/issues/47
+            raise ValueError("Only time-invariant systems supported currently")
+        self._cached_f_jac = jit(jacrev(lambda x: self.model.fdyn(0.0, x)))
+
         self.init_metric()
 
         self.f_jac_at = dynamics.FunctionDynamics(system).f_jac_at
@@ -93,6 +98,28 @@ class StochasticReachtube:
         self.t0 = 0
         self.cx_t0 = self.model.cx
         self.rad_t0 = self.model.rad
+
+    def f_jac_at(self, t, x):
+        return jnp.array(self._cached_f_jac(x))
+
+    def metric(self, Fmid, ellipsoids):
+        if ellipsoids:
+            A1inv = Fmid
+            A1 = inv(A1inv)
+            M1 = inv(A1inv @ A1inv.T)
+
+            W, v = eigh(M1)
+
+            W = abs(W)  # to prevent nan-errors
+
+            semiAxes = 1 / np.sqrt(W)  # needed to compute volume of ellipse
+
+        else:
+            A1 = np.eye(Fmid.shape[0])
+            M1 = np.eye(Fmid.shape[0])
+            semiAxes = np.array([1])
+
+        return M1, A1, semiAxes.prod()
 
     def compute_volume(self, semiAxes_product=None):
         if semiAxes_product is None:
@@ -118,7 +145,7 @@ class StochasticReachtube:
         return cx, F
 
     def compute_metric_and_center(self, time_range, ellipsoids):
-        print(f"Propagating center point for {time_range.shape[0]-1} timesteps")
+        print(f"Propagating center point for {time_range.shape[0] - 1} timesteps")
         cx_timeRange, F_timeRange = self.propagate_center_point(time_range)
         A1_timeRange = np.eye(self.model.dim).reshape(1, self.model.dim, self.model.dim)
         M1_timeRange = np.eye(self.model.dim).reshape(1, self.model.dim, self.model.dim)
