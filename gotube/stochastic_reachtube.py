@@ -57,11 +57,21 @@ class StochasticReachtube:
             _description_, by default False
         """
 
-        self.time_step = min(time_step, time_horizon)
+        self.rad_t0 = None
+        self.cx_t0 = None
+        self.t0 = None
+        self.cur_rad = None
+        self.cur_cx = None
+        self.cur_time = None
+        self.A0inv = None
+        self.A1inv = None
+        self.A1 = None
+        self.M1 = None
+        self.time_step = jnp.minimum(time_step, time_horizon)
         self.profile = profile
-        self.h_metric = min(h_metric, time_step)
-        self.max_step_metric = min(max_step_metric, self.h_metric)
-        self.max_step_optim = min(max_step_optim, self.time_step)
+        self.h_metric = jnp.minimum(h_metric, time_step)
+        self.max_step_metric = jnp.minimum(max_step_metric, self.h_metric)
+        self.max_step_optim = jnp.minimum(max_step_optim, self.time_step)
         self.time_horizon = time_horizon
         self.batch = batch
         self.num_gpus = num_gpus
@@ -125,7 +135,7 @@ class StochasticReachtube:
         if semiAxes_product is None:
             semiAxes_product = 1
         volC = gamma(self.model.dim / 2.0 + 1) ** -1 * jnp.pi ** (
-            self.model.dim / 2.0
+                self.model.dim / 2.0
         )  # volume constant for ellipse and ball
         return volC * self.cur_rad ** self.model.dim * semiAxes_product
 
