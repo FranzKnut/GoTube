@@ -9,6 +9,7 @@ import gotube.benchmarks as bm
 import gotube.stochastic_reachtube as reach
 import gotube.go_tube as go_tube
 import time
+from importlib import metadata
 from gotube.performance_log import close_log
 from gotube.performance_log import create_plot_file
 from gotube.performance_log import write_plot_file
@@ -42,6 +43,36 @@ def add_gotube_args(parser):
     # initial radius
     parser.add_argument("--radius", default=None, type=float)
     return parser
+
+
+def write_metadata(file_name, system, cl_args, total_number_of_points, runtime, mean_volume):
+
+    # get current version of gotube from pyproject.toml
+    try:
+        gotube_version = metadata.version('gotube')
+    except metadata.PackageNotFoundError:
+        gotube_version = 'unknown'
+
+    with open(file_name, "w") as f:
+        # write header
+        f.write("gotube_version,system,starting_time,time_horizon,time_step,starting_radius,mu,probability,")
+        f.write("runtime,total_samples,mean_volume,num_gpus,use_ellipsoids\n")
+
+        # write metadata
+        f.write(f"{gotube_version},")
+        f.write(f"{system.__class__.__name__},")
+        f.write(f"{cl_args.starting_time:0.4g},")
+        f.write(f"{cl_args.time_horizon:0.4g},")
+        f.write(f"{cl_args.time_step:0.4g},")
+        f.write(f"{system.rad:0.4g},")
+        f.write(f"{cl_args.mu:0.4g},")
+        f.write(f"{1.0 - cl_args.gamma:0.4f},")
+        f.write(f"{runtime:0.2f},")
+        f.write(f"{total_number_of_points:d},")
+        f.write(f"{mean_volume:0.5g},")
+        f.write(f"{cl_args.num_gpus},")
+        f.write(f"{cl_args.ellipsoids}")
+        f.write("\n")
 
 
 def run_gotube(system: bm.BaseSystem, args):
@@ -135,21 +166,13 @@ def run_gotube(system: bm.BaseSystem, args):
             }
             log_stat(volumes)
 
+    runtime = time.time() - start_time
+
     if args.score:
-        with open("all_prob_scores.csv", "a") as f:
-            # CSV with header benchmark, time-horizon, prob, runtime, volume
-            f.write(f"{args.benchmark},")
-            f.write(f"{args.time_horizon:0.4g},")
-            f.write(f"{args.radius:0.4g},")
-            f.write(f"{args.mu:0.4g},")
-            f.write(f"{1.0-args.gamma:0.4f},")
-            f.write(f"{time.time()-start_time:0.2f},")
-            f.write(f"{total_random_points.shape[0]:d},")
-            f.write(f"{float(volume.mean()):0.5g}")
-            f.write("\n")
+        write_metadata("all_prob_scores.csv", system, args, total_random_points.shape[0], runtime, float(volume.mean()))
     if rt.profile:
         final_notes = {
-            "total_time": time.time() - start_time,
+            "total_time": runtime,
             "samples": args.num_gpus * total_random_points.shape[1],
         }
         close_log(final_notes)
