@@ -3,9 +3,11 @@ from functools import partial
 import numpy as np
 import jax.numpy as jnp
 from jax.experimental.ode import odeint
-from jax import device_put, devices, pmap, vmap, jit
+from jax import device_put, devices, jacrev, pmap, vmap, jit
 
 from scipy.special import gamma
+from scipy.linalg import eigh
+from numpy.linalg import inv
 
 # own files
 import gotube.benchmarks as bm
