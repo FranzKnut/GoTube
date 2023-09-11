@@ -72,7 +72,7 @@ def plot_ellipses(
     # permutation matrix to project on axis1 and axis2
     P = np.eye(dim)
     P[:, [0, projection_axes[0]]] = P[:, [projection_axes[0], 0]]
-    P[:, [1, projection_axes[1]]] = P[:, [projection_axes[1]]]
+    P[:, [1, projection_axes[1]]] = P[:, [projection_axes[1], 1]]
 
     for original_ellipse in data_ellipse[1::skip_reachsets]:
 
