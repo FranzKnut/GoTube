@@ -191,16 +191,14 @@ def optimize(model, initial_points, points=None, gradients=None):
                 model.A1, model.A0inv, gradients)
 
         with Timer('compute expected local lipschitz'):
-            sample_size = points.shape[0]
-
             # compute expected value of delta lipschitz
             dimension_axis = 1
 
             gamma_hat = 1 - jnp.sqrt(1 - model.gamma)
 
             delta_lipschitz, prob_bound_lipschitz = compute_delta_lipschitz(
-                initial_points[:sample_size],
-                lipschitz[:sample_size],
+                initial_points,
+                lipschitz,
                 dimension_axis,
                 gamma_hat
             )

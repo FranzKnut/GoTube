@@ -169,12 +169,14 @@ def run_gotube(system: bm.BaseSystem, args):
 
     runtime = time.time() - start_time
 
+    total_samples = args.num_gpus * total_random_points.shape[1]
+
     if args.score:
-        write_metadata("all_prob_scores.csv", system, args, total_random_points.shape[0], runtime, float(volume.mean()))
+        write_metadata("all_prob_scores.csv", system, args, total_samples, runtime, float(volume.mean()))
     if rt.profile:
         final_notes = {
             "total_time": runtime,
-            "samples": args.num_gpus * total_random_points.shape[1],
+            "samples": total_samples,
         }
         close_log(final_notes)
 

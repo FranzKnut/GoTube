@@ -203,15 +203,17 @@ class StochasticReachtube:
         return vmap(self.model.fdyn, in_axes=(None, 0))(t, x)
 
     def aug_fdyn_jax(self, aug_state=0, t=0):
-        return pmap(vmap(self.aug_fdyn, in_axes=(None, 0)), in_axes=(None, 0))(t, aug_state)
+        return pmap(vmap(self.aug_fdyn,
+                         in_axes=(None, 0)),
+                    in_axes=(None, 0))(t, aug_state)
 
     def fdyn_jax(self, x=0, t=0):
-        return pmap(vmap(self.model.fdyn, in_axes=(None, 0)), in_axes=(None, 0))(t, x)
+        return pmap(vmap(self.model.fdyn,
+                         in_axes=(None, 0)),
+                    in_axes=(None, 0))(t, x)
 
     def create_aug_state(self, polar, rad_t0, cx_t0):
-        x = jnp.array(
-            pol.polar2cart_euclidean_metric(rad_t0, polar, self.A0inv) + cx_t0
-        )
+        x = self.create_state(polar, rad_t0, cx_t0)
         F = jnp.eye(self.model.dim)
 
         aug_state = jnp.concatenate((jnp.array([x]), F)).reshape(
@@ -219,6 +221,20 @@ class StochasticReachtube:
         )  # reshape to row vector
 
         return aug_state, x
+
+    def create_state(self, polar, rad_t0, cx_t0):
+        x = jnp.array(
+            pol.polar2cart_euclidean_metric(rad_t0, polar, self.A0inv) + cx_t0
+        )
+
+        return x
+
+    def create_aug_state_cartesian(self, x, F):
+        aug_state = jnp.concatenate((jnp.array([x]), F)).reshape(
+            -1
+        )  # reshape to row vector
+
+        return aug_state
 
     def one_step_aug_integrator(self, x, F):
         aug_state = pmap(vmap(create_aug_state_cartesian))(x, F)
@@ -239,7 +255,9 @@ class StochasticReachtube:
         rad_t0 = self.rad_t0
         cx_t0 = self.cx_t0
 
-        aug_state, initial_x = pmap(vmap(self.create_aug_state, in_axes=(0, None, None)), in_axes=(0, None, None))(
+        aug_state, initial_x = pmap(vmap(self.create_aug_state,
+                                         in_axes=(0, None, None)),
+                                    in_axes=(0, None, None))(
             polar, rad_t0, cx_t0
         )
         sol = odeint(
