@@ -21,23 +21,23 @@ def create_aug_state_cartesian(x, F):
 
 class StochasticReachtube:
     def __init__(
-        self,
-        system: bm.BaseSystem = bm.CartpoleCTRNN(None),
-        time_horizon: float = 10.0,  # time_horizon until which the reachtube should be constructed
-        profile: bool = False,
-        time_step: float = 0.1,  # ReachTube construction
-        h_metric: float = 0.05,  # time_step for metric computation
-        max_step_metric: float = 0.00125,  # maximum time_step for metric computation
-        max_step_optim: float = 0.1,  # maximum time_step for optimization
-        batch: int = 1,  # number of initial points for vectorization
-        num_gpus: int = 1,  # number of GPUs for parallel computation
-        fixed_seed=False,  # specify whether a fixed seed should be used (only for comparing different algorithms)
-        atol: float = 1e-10,  # absolute tolerance of integration
-        rtol: float = 1e-10,  # relative tolerance of integration
-        plot_grid: int = 50,
-        mu: float = 1.5,
-        gamma: float = 0.01,
-        radius: bool = False,
+            self,
+            system: bm.BaseSystem = bm.CartpoleCTRNN(None),
+            time_horizon: float = 10.0,  # time_horizon until which the reachtube should be constructed
+            profile: bool = False,
+            time_step: float = 0.1,  # ReachTube construction
+            h_metric: float = 0.05,  # time_step for metric computation
+            max_step_metric: float = 0.00125,  # maximum time_step for metric computation
+            max_step_optim: float = 0.1,  # maximum time_step for optimization
+            batch: int = 1,  # number of initial points for vectorization
+            num_gpus: int = 1,  # number of GPUs for parallel computation
+            fixed_seed=False,  # specify whether a fixed seed should be used (only for comparing different algorithms)
+            atol: float = 1e-10,  # absolute tolerance of integration
+            rtol: float = 1e-10,  # relative tolerance of integration
+            plot_grid: int = 50,
+            mu: float = 1.5,
+            gamma: float = 0.01,
+            radius: bool = False,
     ):
         """Construct a stochastic reachtube for a given model
 
