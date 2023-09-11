@@ -64,8 +64,9 @@ def get_probability_none_in_cap(model, radius_points):
 #  https://scipy.github.io/devdocs/generated/scipy.special.betainc.html#scipy.special.betainc) - Only use the
 #  random sampled points for probability construction
 #  use also the discarded points and create balls around them
-def get_probability(model, radius_points):
-    return jnp.sqrt(1 - model.gamma) * (1 - get_probability_none_in_cap(model, radius_points))
+
+def get_probability(model, radius_points, prob_bound_lipschitz):
+    return prob_bound_lipschitz * (1 - get_probability_none_in_cap(model, radius_points))
 
 
 def compute_delta_lipschitz_speed(y_jax, fy_jax, axis, gamma):
@@ -209,7 +210,7 @@ def optimize(model, initial_points, points=None, gradients=None):
             )
 
         with Timer('compute probability'):
-            prob = get_probability(model, safety_region_radii)
+            prob = get_probability(model, safety_region_radii, prob_bound_lipschitz)
 
             del delta_lipschitz
             del lipschitz
