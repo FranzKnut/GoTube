@@ -41,27 +41,6 @@ class FunctionDynamics:
 
         return M1, A1, semiAxes.prod()
 
-
-def polar2cart_no_rad(phi):
-    sin_polar = jnp.sin(phi)
-    cart = jnp.append(jnp.cos(phi), jnp.ones(1)) * jnp.append(jnp.ones(1), sin_polar)
-    for i in range(1, jnp.size(phi)):
-        cart *= jnp.append(jnp.ones(i + 1), sin_polar[:-i])
-    return (
-        cart  # rad*polar2cart_no_rad(phi) is the true value of the cartesian coordinate
-    )
-
-
-_jac_polar_cached = None
-
-
-def jacobian_polar_at(phi):
-    global _jac_polar_cached
-    if _jac_polar_cached is None:
-        _jac_polar_cached = jit(jacfwd(polar2cart_no_rad))
-    return _jac_polar_cached(phi)
-
-
 if __name__ == "__main__":
     fdyn = FunctionDynamics(bm.CartpoleCTRNN())
 

@@ -68,6 +68,28 @@ def get_probability(model, radius_points):
     return jnp.sqrt(1 - model.gamma) * (1 - get_probability_none_in_cap(model, radius_points))
 
 
+def compute_delta_lipschitz_speed(y_jax, fy_jax, axis, gamma):
+    gamma_hat = 1 - jnp.sqrt(1 - gamma)
+    x_norm = jnp.linalg.norm(jnp.diff(y_jax, axis=axis), axis=-1)
+    diff_quotients = abs(jnp.diff(fy_jax, axis=axis)) / x_norm * (x_norm > 0)
+    sample_size = jnp.floor(y_jax.shape[1] / 2)
+    number_of_elements_for_maximum = round(sample_size ** (1 / 4))  # m in Lemma 1, Theorem 2 and throughout paper
+
+    sample_size_dividable = sample_size - sample_size % number_of_elements_for_maximum
+
+    number_of_maxima = sample_size_dividable / number_of_elements_for_maximum  # n in Lemma 1
+    alpha = min(gamma_hat, 0.5)
+    epsilon = jnp.sqrt(jnp.log(1 / alpha) / (2 * number_of_maxima))
+
+    # without generalized extreme value distribution
+    # taking maximum of quotients because it is only beneficial if F_L(max) > 1-gamma - related to Eq. (S14)
+    prob_quantile = 1 - epsilon
+    delta_lipschitz = diff_quotients.max()
+    prob_bound_lipschitz = (1 - gamma_hat) * prob_quantile
+
+    return delta_lipschitz, prob_bound_lipschitz
+
+
 def compute_delta_lipschitz(y_jax, fy_jax, axis, gamma):
     gamma_hat = 1 - jnp.sqrt(1 - gamma)
     diff_quotients = get_diff_quotient_pairwise(y_jax, fy_jax, axis)
@@ -76,16 +98,15 @@ def compute_delta_lipschitz(y_jax, fy_jax, axis, gamma):
 
     sample_size_dividable = sample_size - sample_size % number_of_elements_for_maximum
 
-    diff_quotients_samples = diff_quotients[:sample_size_dividable].reshape(-1, number_of_elements_for_maximum)
-    max_quotients = jnp.nanmax(diff_quotients_samples, axis=1)
-    number_of_maxima = max_quotients.size  # n in Lemma 1
+    number_of_maxima = sample_size_dividable / number_of_elements_for_maximum  # n in Lemma 1
+
     alpha = min(gamma_hat, 0.5)
     epsilon = jnp.sqrt(jnp.log(1 / alpha) / (2 * number_of_maxima))
 
     # without generalized extreme value distribution
     # taking maximum of quotients because it is only beneficial if F_L(max) > 1-gamma - related to Eq. (S14)
     prob_quantile = 1 - epsilon
-    delta_lipschitz = max_quotients.max()
+    delta_lipschitz = diff_quotients.max()
     prob_bound_lipschitz = (1 - gamma_hat) * prob_quantile
 
     return delta_lipschitz, prob_bound_lipschitz

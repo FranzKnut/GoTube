@@ -127,7 +127,7 @@ def run_gotube(system: bm.BaseSystem, args):
 
     # for loop starting at Line 3
     for i, time_py in enumerate(timeRange):
-        print(f"Step {i}/{timeRange.shape[0]} at {time_py:0.2f} s")
+        print(f"Step {i+1}/{timeRange.shape[0]} at {time_py:0.2f} s")
 
         rt.time_horizon = time_py
         rt.time_step = args.time_step

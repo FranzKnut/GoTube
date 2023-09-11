@@ -3,9 +3,11 @@ from functools import partial
 import numpy as np
 import jax.numpy as jnp
 from jax.experimental.ode import odeint
-from jax import device_put, devices, pmap, vmap, jit
+from jax import device_put, devices, jacrev, pmap, vmap, jit
 
 from scipy.special import gamma
+from scipy.linalg import eigh
+from numpy.linalg import inv
 
 # own files
 import gotube.benchmarks as bm
@@ -19,23 +21,23 @@ def create_aug_state_cartesian(x, F):
 
 class StochasticReachtube:
     def __init__(
-        self,
-        system: bm.BaseSystem = bm.CartpoleCTRNN(None),
-        time_horizon: float = 10.0,  # time_horizon until which the reachtube should be constructed
-        profile: bool = False,
-        time_step: float = 0.1,  # ReachTube construction
-        h_metric: float = 0.05,  # time_step for metric computation
-        max_step_metric: float = 0.00125,  # maximum time_step for metric computation
-        max_step_optim: float = 0.1,  # maximum time_step for optimization
-        batch: int = 1,  # number of initial points for vectorization
-        num_gpus: int = 1,  # number of GPUs for parallel computation
-        fixed_seed=False,  # specify whether a fixed seed should be used (only for comparing different algorithms)
-        atol: float = 1e-10,  # absolute tolerance of integration
-        rtol: float = 1e-10,  # relative tolerance of integration
-        plot_grid: int = 50,
-        mu: float = 1.5,
-        gamma: float = 0.01,
-        radius: bool = False,
+            self,
+            system: bm.BaseSystem = bm.CartpoleCTRNN(None),
+            time_horizon: float = 10.0,  # time_horizon until which the reachtube should be constructed
+            profile: bool = False,
+            time_step: float = 0.1,  # ReachTube construction
+            h_metric: float = 0.05,  # time_step for metric computation
+            max_step_metric: float = 0.00125,  # maximum time_step for metric computation
+            max_step_optim: float = 0.1,  # maximum time_step for optimization
+            batch: int = 1,  # number of initial points for vectorization
+            num_gpus: int = 1,  # number of GPUs for parallel computation
+            fixed_seed=False,  # specify whether a fixed seed should be used (only for comparing different algorithms)
+            atol: float = 1e-10,  # absolute tolerance of integration
+            rtol: float = 1e-10,  # relative tolerance of integration
+            plot_grid: int = 50,
+            mu: float = 1.5,
+            gamma: float = 0.01,
+            radius: bool = False,
     ):
         """Construct a stochastic reachtube for a given model
 
@@ -57,11 +59,21 @@ class StochasticReachtube:
             _description_, by default False
         """
 
-        self.time_step = min(time_step, time_horizon)
+        self.rad_t0 = None
+        self.cx_t0 = None
+        self.t0 = None
+        self.cur_rad = None
+        self.cur_cx = None
+        self.cur_time = None
+        self.A0inv = None
+        self.A1inv = None
+        self.A1 = None
+        self.M1 = None
+        self.time_step = jnp.minimum(time_step, time_horizon)
         self.profile = profile
-        self.h_metric = min(h_metric, time_step)
-        self.max_step_metric = min(max_step_metric, self.h_metric)
-        self.max_step_optim = min(max_step_optim, self.time_step)
+        self.h_metric = jnp.minimum(h_metric, time_step)
+        self.max_step_metric = jnp.minimum(max_step_metric, self.h_metric)
+        self.max_step_optim = jnp.minimum(max_step_optim, self.time_step)
         self.time_horizon = time_horizon
         self.batch = batch
         self.num_gpus = num_gpus
@@ -75,7 +87,12 @@ class StochasticReachtube:
         self.model = system
         self.init_model()
 
-        self.metric = dynamics.FunctionDynamics(system).metric
+        x = jnp.ones(self.model.dim)
+        if jnp.sum(jnp.abs(self.model.fdyn(0.0, x) - self.model.fdyn(1.0, x))) > 1e-8:
+            # https://github.com/google/jax/issues/47
+            raise ValueError("Only time-invariant systems supported currently")
+        self._cached_f_jac = jit(jacrev(lambda x: self.model.fdyn(0.0, x)))
+
         self.init_metric()
 
         self.f_jac_at = dynamics.FunctionDynamics(system).f_jac_at
@@ -94,11 +111,33 @@ class StochasticReachtube:
         self.cx_t0 = self.model.cx
         self.rad_t0 = self.model.rad
 
+    def f_jac_at(self, t, x):
+        return jnp.array(self._cached_f_jac(x))
+
+    def metric(self, Fmid, ellipsoids):
+        if ellipsoids:
+            A1inv = Fmid
+            A1 = inv(A1inv)
+            M1 = inv(A1inv @ A1inv.T)
+
+            W, v = eigh(M1)
+
+            W = abs(W)  # to prevent nan-errors
+
+            semiAxes = 1 / np.sqrt(W)  # needed to compute volume of ellipse
+
+        else:
+            A1 = np.eye(Fmid.shape[0])
+            M1 = np.eye(Fmid.shape[0])
+            semiAxes = np.array([1])
+
+        return M1, A1, semiAxes.prod()
+
     def compute_volume(self, semiAxes_product=None):
         if semiAxes_product is None:
             semiAxes_product = 1
         volC = gamma(self.model.dim / 2.0 + 1) ** -1 * jnp.pi ** (
-            self.model.dim / 2.0
+                self.model.dim / 2.0
         )  # volume constant for ellipse and ball
         return volC * self.cur_rad ** self.model.dim * semiAxes_product
 
@@ -118,7 +157,7 @@ class StochasticReachtube:
         return cx, F
 
     def compute_metric_and_center(self, time_range, ellipsoids):
-        print(f"Propagating center point for {time_range.shape[0]-1} timesteps")
+        print(f"Propagating center point for {time_range.shape[0] - 1} timesteps")
         cx_timeRange, F_timeRange = self.propagate_center_point(time_range)
         A1_timeRange = np.eye(self.model.dim).reshape(1, self.model.dim, self.model.dim)
         M1_timeRange = np.eye(self.model.dim).reshape(1, self.model.dim, self.model.dim)
